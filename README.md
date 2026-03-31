@@ -102,6 +102,7 @@ O programa oferece um menu interativo com as seguintes opções:
 - **Limpeza de tela**: Ao selecionar uma opção, a tela é limpa para melhor visualização.
 - **Cabeçalho personalizado**: Exibe o título "BluubeAuth - Python Example" em cada tela.
 - **Mensagens de sucesso/erro**: Feedback claro para o usuário sobre o resultado das operações.
+- **User Data Integrado**: Você pode acessar facilmente todas as informações do usuário pós-login usando os dicionários em `auth.user_data` (como expiração, HWID, IP de acesso, etc).
 
 ## 🔒 Segurança
 
