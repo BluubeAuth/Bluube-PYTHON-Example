@@ -37,11 +37,13 @@ def _print_user_data(auth: BluubeAuth) -> None:
     print("-" * 32)
 
 def main() -> None:
-    auth = BluubeAuth(app_id="StorM", owner_id="40c18813-0d69-45f6-8746-cac1ff186386", version="1.0")
+    # SDK PYTHON -> APP_ID, OWNER_ID, VERSION
+    auth = BluubeAuth(app_id="APP_ID", owner_id="OWNER_ID", version="1.0")
     _clear()
     _header()
     if not auth.initialize():
-        print(auth.last_message or "Initialization failed.")
+        print("\n" + (auth.last_message or "Initialization failed."))
+        input("\nPress ENTER to exit...")
         auth.close()
         return
 
