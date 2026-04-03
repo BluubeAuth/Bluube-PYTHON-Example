@@ -25,7 +25,7 @@ def _hex_to_bytes(hex_str: str) -> bytes:
     return bytes.fromhex(s)
 
 def _normalize_base(api_base_url: Optional[str]) -> str:
-    base = (api_base_url or "https://auth.bluube.com").strip().rstrip("/")
+    base = (api_base_url or "https://api.bluube.com").strip().rstrip("/")
     if base.endswith("/api/client"):
         base = base[: -len("/api/client")]
     return base + "/api/client"
