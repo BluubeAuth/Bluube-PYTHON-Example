@@ -37,8 +37,9 @@ def _print_user_data(auth: BluubeAuth) -> None:
     print("-" * 32)
 
 def main() -> None:
-    # SDK PYTHON -> APP_ID, OWNER_ID, VERSION
+    # APP_ID, OWNER_ID, VERSION
     auth = BluubeAuth(app_id="APP_ID", owner_id="OWNER_ID", version="1.0")
+    
     _clear()
     _header()
     if not auth.initialize():
