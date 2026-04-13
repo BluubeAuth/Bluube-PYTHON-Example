@@ -1,30 +1,49 @@
 # Sistema de Autenticação Bluube - Exemplo em Python
 
-Aplicativo de console em Python que demonstra a integração com o sistema de autenticação BluubeAuth, permitindo login e registro de usuários através de chaves de licença ou credenciais de usuário.
+Aplicativo de console em Python que demonstra a integração com o BluubeAuth: **`initialize()`**, login com usuário e senha, registro com chave de licença e opção de sair. O arquivo `BluubeAuth.py` é o núcleo reutilizável do SDK.
 
 ## 📋 Sobre o Projeto
 
-Este projeto é um exemplo de implementação do BluubeAuth em uma aplicação Python com interface de console, oferecendo três métodos de autenticação:
-- **Login com Usuário e Senha**: Autenticação tradicional com credenciais
-- **Login com Chave de Licença**: Autenticação usando apenas uma chave de licença
-- **Registro de Novo Usuário**: Criação de conta com usuário, senha e chave de licença
+Este exemplo implementa o BluubeAuth em modo **console**, com menu interativo. O que o `main.py` oferece hoje:
+
+- **Login com usuário e senha** — autenticação com credenciais já registradas.
+- **Registrar novo usuário** — cria conta com chave de licença + usuário + senha.
+- **Sair** — encerra o programa.
+
+Você pode **estender o menu** (por exemplo, fluxo só com chave de licença) usando os mesmos métodos de `BluubeAuth`; isso fica a critério do seu produto.
+
+## 💓 O heartbeat: o que é, por que existe e o que acontece se não estiver certo
+
+Depois de um **`initialize()`** bem-sucedido, o SDK **inicia automaticamente** um pulso periódico (**heartbeat**) que chama o endpoint **`/heartbeat`** no servidor, enviando sessão, IP, versão e HWID quando aplicável.
+
+**Por que isso importa**
+
+- O servidor sabe que o cliente **continua vivo** e pode aplicar **políticas** (versão do app, bloqueios, HWID, VPN, etc.).
+- Sessões **fantasma** ou **revogadas** são detectadas: a API pode responder com falha; em caso de mensagem **`Invalid session`** (inglês, conforme o contrato da API), o exemplo encerra o processo de forma controlada.
+- Sem heartbeat bem implementado (ou se você **remover** o pulso e **não** substituir por nada), o servidor **não recebe** esses sinais: expiração por tempo, limpeza de sessão e regras de segurança **deixam de funcionar como o painel espera**. Na prática: usuário pode parecer “logado” localmente enquanto o servidor já invalidou a sessão, ou o contrário — comportamento inconsistente e suporte mais difícil.
+
+**O que “implementado direito” significa neste exemplo**
+
+- Não chamar heartbeat **só depois** do login se a sua API já exige sessão válida na tela inicial — por isso o exemplo inicia o heartbeat **logo após** o `initialize()`, inclusive **antes** do usuário logar.
+- Manter o intervalo coerente com o servidor (aqui, por volta de **30 segundos** no código de exemplo).
+- Em **depuração**: se você **pausar todo o processo** no depurador (“Break All”), timers e threads param — o heartbeat **não dispara** até continuar a execução. Isso é esperado; não indica bug em produção.
 
 ## 🛠️ Tecnologias Utilizadas
 
 - **Python 3.7+** para desenvolvimento
 - **requests** para comunicação HTTP rápida e estável
 - **PyNaCl (Ed25519)** para verificação de chaves e assinaturas da API
-- **Threading** para manter pulso de conexão contínuo (Heartbeat)
-- **Interface de Console** interativa com menu de opções
+- **Threading** para o heartbeat em segundo plano
+- **Interface de console** interativa com menu de opções
 
 ## 📦 Dependências
 
 O projeto utiliza os seguintes pacotes Python:
 
-- **requests**: Cliente HTTP
-- **pynacl**: Criptografia e validação de assinaturas Ed25519 digitais
+- **requests**: cliente HTTP
+- **pynacl**: criptografia e validação de assinaturas Ed25519
 
-As dependências estão listadas no arquivo `requirements.txt`.
+As dependências estão listadas no arquivo `requirements.txt` (pasta `Console/`).
 
 ## 🚀 Como Configurar
 
@@ -36,14 +55,15 @@ As dependências estão listadas no arquivo `requirements.txt`.
 
 ### Instalação
 
-1. Clone ou baixe este repositório
-2. Instale as dependências necessárias:
+1. Clone ou baixe este repositório.
+2. Entre na pasta **`Console/`** e instale as dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
 Ou execute o script de instalação fornecido (Windows):
+
 ```bash
 install_requirements.bat
 ```
@@ -51,8 +71,8 @@ install_requirements.bat
 3. Configure suas credenciais BluubeAuth no arquivo `main.py`:
 
 ```python
-// APP_ID, OWNER_ID, VERSION
-auth = BluubeAuth(app_id="SUA_APP", owner_id="SEU_OWNER_ID", version="1.0")
+# APP_ID, OWNER_ID, VERSION
+auth = BluubeAuth(app_id="APP_ID", owner_id="OWNER_ID", version="1.0")
 ```
 
 4. Execute o programa:
@@ -62,6 +82,7 @@ python main.py
 ```
 
 Ou use o script de inicialização (Windows):
+
 ```bash
 start.bat
 ```
@@ -69,71 +90,71 @@ start.bat
 ## 📁 Estrutura do Projeto
 
 ```
-Python Example/
-├── main.py                    # Arquivo principal (Interface do console)
-├── BluubeAuth.py              # Classe principal do SDK com segurança Ed25519
-├── requirements.txt           # Dependências do projeto
-├── start.bat                  # Script de inicialização (Windows)
-└── install_requirements.bat   # Script de instalação de dependências (Windows)
+Bluube-PYTHON-Example/
+├── README.md                          # Documentação
+└── Console/
+    ├── main.py                        # Arquivo principal (interface do console)
+    ├── BluubeAuth.py                  # Classe principal do SDK com segurança Ed25519
+    ├── requirements.txt               # Dependências do projeto
+    ├── start.bat                      # Script de inicialização (Windows)
+    └── install_requirements.bat       # Script de instalação de dependências (Windows)
 ```
 
 ## 🔑 Funcionalidades
 
 ### BluubeAuth.py
 
-A classe `BluubeAuth` fornece métodos poderosos e criptografados para lidar com autenticação:
+A classe `BluubeAuth` concentra a comunicação segura com a API:
 
-- **`initialize()`**: Autentica seu aplicativo no servidor Bluube, recebendo tokens e validando assinaturas.
-- **`register_with_key()`**: Registra um usuário consumindo uma chave/licença intacta.
-- **`login_user()`**: Faz o login usando as novas credenciais criadas.
-- **`logout()` / `close()`**: Finaliza a sessão e as instâncias secundárias.
-- **`Heartbeat` Contínuo**: (Automático) Pulso de vida para garantir que a sessão continue válida após login.
+- **`initialize()`**: registra o aplicativo no servidor, obtém a sessão e valida assinaturas; em seguida **inicia o heartbeat** automático (não é necessário chamar de novo após login/registro neste exemplo).
+- **`register_with_key()`**: registra um usuário consumindo uma chave/licença.
+- **`login_user()`**: login com usuário e senha.
+- **`logout()` / `close()`**: encerra o heartbeat e limpa o estado da sessão.
+- **Heartbeat**: ver a seção **O heartbeat** no início deste README; respostas com **`Invalid session`** encerram o processo com código 0, alinhado à API.
 
 ### main.py (Interface de Console)
 
-O programa oferece um menu interativo com as seguintes opções:
+Menu interativo:
 
-1. **Login com Usuário e Senha**: Autenticação com credenciais de usuário.
-2. **Registrar Novo Usuário**: Registro de nova conta com usuário, senha e chave.
-3. **Sair**: Encerra o programa.
+1. Login com usuário e senha  
+2. Registrar novo usuário (chave + usuário + senha)  
+3. Sair  
 
 ### Características da Interface
 
-- **Limpeza de tela**: Ao selecionar uma opção, a tela é limpa para melhor visualização.
-- **Cabeçalho personalizado**: Exibe o título "BluubeAuth - Python Example" em cada tela.
-- **Mensagens de sucesso/erro**: Feedback claro para o usuário sobre o resultado das operações.
-- **User Data Integrado**: Você pode acessar facilmente todas as informações do usuário pós-login usando os dicionários em `auth.user_data` (como expiração, HWID, IP de acesso, etc).
+- **Limpeza de tela** ao navegar no menu.
+- **Cabeçalho** com o título do exemplo.
+- **Mensagens** de sucesso ou erro claras.
+- **Dados do usuário** após login/registro bem-sucedido via `auth.user_data` (expiração, HWID, IP, etc.).
 
 ## 🔒 Segurança
 
-O sistema implementa as seguintes medidas de segurança:
-
-- **Assinatura Ed25519 em Respostas**: Toda resposta do servidor é assinada digitalmente. O SDK intercepta a assinatura (`X-Bluube-Signature`) e verifica. Um atacante não pode emular a API com status 200, pois precisa possuir a chave privada.
-- **Pinning de Chave Pública**: A chave pública do seu servidor é fixa no SDK. Impede falsificação pura da API em ataques "Man-in-the-Middle" (MITM).
-- **Proteção Anti-Replay Timestamp**: Respostas têm timestamps assinados. Se uma resposta válida for atrasada ou reenviada pelo atacante fora da janela permitida, ela é negada.
-- **Coleta de HWID Real**: Não se baseia só em IP. O sistema coleta de maneira sofisticada (via `advapi32` e SIDs de Windows nativo) garantindo exclusividade de máquina.
-- **Heartbeat e Kill-Switch Ativo**: Conexões irregulares, bans ou mudanças de versão farão o seu aplicativo encerrar a si mesmo em tempo real.
+- **Assinatura Ed25519 em respostas**: o SDK verifica `X-Bluube-Signature` e `X-Bluube-Timestamp`; respostas forjadas sem a chave privada do servidor são rejeitadas.
+- **Pinning de chave pública**: a chave esperada está fixa no código do exemplo.
+- **Anti-replay** por janela de tempo no timestamp assinado.
+- **HWID**: no Windows o exemplo usa camadas nativas (SID, registro, fallbacks); em Linux/macOS há estratégias alternativas no código.
+- **Heartbeat**: mantém a sessão alinhada às regras do servidor; ver seção dedicada acima.
 
 ## ⚙️ Configuração da API
 
 A API BluubeAuth está configurada para usar o endpoint:
+
 ```
 https://api.bluube.com
 ```
 
-Certifique-se de que este endpoint está acessível e que suas credenciais (AppID, OwnerID e Version) estão corretas.
+Certifique-se de que o endpoint está acessível e que AppID, OwnerID e Version estão corretos no painel Bluube.
 
 ## 🐛 Tratamento de Erros e Segurança
 
-Em caso de violações de segurança (por exemplo, tentativa boba de modificar o HTTP para sempre voltar resposta `success: true`), o console não lançará erros genéricos — ele emitirá a exceção estrutural interna `_terminate()` identificando a violação (falta de assinatura, carimbo de data corrompido ou erro na chave ed25519) e encerrará o processo imediatamente.
+Violações de integridade (assinatura inválida, resposta adulterada, etc.) disparam **`_terminate()`** com mensagem e encerramento do processo, em vez de seguir com estado inconsistente.
 
 ## ⚠️ Avisos
 
-- **Nunca compartilhe suas credenciais** (AppID e OwnerID) publicamente
-- **Use variáveis de ambiente** em produção para armazenar credenciais sensíveis
-- **Implemente verificações de integridade** para prevenir modificações no código
-- **Mantenha suas dependências atualizadas** para segurança
-- **Use ofuscação de código** se necessário para proteger sua aplicação
+- **Nunca compartilhe** AppID e OwnerID publicamente.
+- **Use variáveis de ambiente** ou cofres de segredos em produção.
+- **Mantenha dependências atualizadas** (`pip`).
+- **Ofuscação / integridade** do binário são responsabilidade do seu pipeline de release, se precisar.
 
 ## 📞 Suporte
 
