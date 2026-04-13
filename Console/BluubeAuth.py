@@ -1,6 +1,7 @@
 import base64
 import json
 import ctypes
+import os
 import ctypes.wintypes
 import platform
 import subprocess
@@ -99,7 +100,7 @@ class BluubeAuth:
         if self._cached_public_ip and now < self._cached_public_ip_expires_at:
             return self._cached_public_ip
         try:
-            r = self._session.get("https://api.ipify.org", timeout=5)
+            r = self._session.get("https://api4.ipify.org", timeout=5)
             ip = (r.text or "").strip()
             if ip:
                 self._cached_public_ip = ip
@@ -311,6 +312,7 @@ class BluubeAuth:
                 self.is_initialized = True
                 self.is_authenticated = False
                 self.last_message = res.message or "OK"
+                self._start_heartbeat()
                 return True
 
             self.last_message = res.message or "Initialization failed."
@@ -352,7 +354,6 @@ class BluubeAuth:
             if res.success:
                 self.is_authenticated = True
                 self.user_data = res.user_data
-                self._start_heartbeat()
                 return True
             return False
         except _SecurityError as ex:
@@ -393,7 +394,6 @@ class BluubeAuth:
             if res.success:
                 self.is_authenticated = True
                 self.user_data = res.user_data
-                self._start_heartbeat()
                 return True
             return False
         except _SecurityError as ex:
@@ -421,7 +421,7 @@ class BluubeAuth:
         self._last_valid_heartbeat_at = None
 
     def _heartbeat_tick(self) -> None:
-        if not self.is_initialized or not self.is_authenticated or not self.session_id:
+        if not self.is_initialized or not self.session_id:
             return
         try:
             ip = self._get_public_ip_cached()
@@ -429,16 +429,15 @@ class BluubeAuth:
             if self._hwid:
                 payload["hwid"] = self._hwid
             res = self._post("/heartbeat", payload)
-            if not res.success and (res.message or "") != "Sessão inválida":
-                self._terminate(res.message or "Session ended.")
-            if not res.success and (res.message or "") == "Sessão inválida":
-                import os
-                os._exit(0)
+            if not res.success:
+                if (res.message or "").strip().casefold() == "invalid session":
+                    os._exit(0)
+                self._terminate(res.message or "Session terminated.")
             self._last_valid_heartbeat_at = time.time()
         except _SecurityError as ex:
             self._terminate(f"Security error: {str(ex)}")
         except requests.RequestException:
-            self._terminate("Network error.")
+            os._exit(0)
 
     def _start_heartbeat(self) -> None:
         self._stop_heartbeat()
@@ -451,7 +450,6 @@ class BluubeAuth:
                 except SystemExit:
                     raise
                 except Exception:
-                    import os
                     os._exit(0)
                 self._heartbeat_stop.wait(self._heartbeat_interval_seconds)
 
@@ -466,5 +464,4 @@ class BluubeAuth:
     def _terminate(self, message: str) -> None:
         self._stop_heartbeat()
         print(f"\n[TERMINATED]: {message}")
-        import os
         os._exit(1)
