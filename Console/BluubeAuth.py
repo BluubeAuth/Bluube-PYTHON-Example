@@ -463,5 +463,4 @@ class BluubeAuth:
 
     def _terminate(self, message: str) -> None:
         self._stop_heartbeat()
-        print(f"\n[TERMINATED]: {message}")
         os._exit(1)
